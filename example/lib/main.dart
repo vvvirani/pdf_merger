@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf_merger/pdf_merger.dart';
+import 'package:pdf_merger/pdf_split_args.dart';
 
 void main() {
   runApp(MyApp());
@@ -31,44 +32,63 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   List<String> filesPath = [];
+  PdfSplitResult _splitResult;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-      ),
+      appBar: AppBar(title: Text(widget.title)),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            MaterialButton(
-              child: Text('Select Pdf file'),
-              onPressed: () async {
-                FilePickerResult result =
-                    await FilePicker.platform.pickFiles(allowMultiple: true);
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              MaterialButton(
+                child: Text('Select Pdf file'),
+                onPressed: () async {
+                  FilePickerResult result = await FilePicker.platform.pickFiles();
 
-                if (result != null) {
-                  setState(() {
-                    if (Platform.isAndroid) {
-                      filesPath =
-                          result.paths.map((path) => File(path).path).toList();
-                    } else {
-                      filesPath.addAll(
-                          result.paths.map((path) => File(path).path).toList());
-                    }
-                  });
-                }
-              },
-            ),
-            ...filesPath
-                .map((path) => Padding(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      child: Text(path),
-                    ))
-                .toList(),
-          ],
+                  if (result != null) {
+                    PlatformFile file = result.files.first;
+
+                    String outputDirPath = await createDirectory('SplitPdf');
+
+                    PdfSplitResult splitResult = await PdfMerger.splitPDF(
+                      PdfSplitArgs(file.path, outputDirPath,
+                          outFilePrefix: 'Test'),
+                    );
+
+                    setState(() {
+                       _splitResult = splitResult;
+                    });
+
+                    // FilePickerResult result =
+                    //     await FilePicker.platform.pickFiles(allowMultiple: true);
+
+                    // if (result != null) {
+                    //   setState(() {
+                    //     if (Platform.isAndroid) {
+                    //       filesPath =
+                    //           result.paths.map((path) => File(path).path).toList();
+                    //     } else {
+                    //       filesPath.addAll(
+                    //           result.paths.map((path) => File(path).path).toList());
+                    //     }
+                    //   });
+                    // }
+                  }
+                },
+              ),
+              for (String path in _splitResult?.pagePaths ?? []) Text(path)
+              // ...filesPath
+              //     .map((path) => Padding(
+              //           padding:
+              //               EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              //           child: Text(path),
+              //         ))
+              //     .toList(),
+            ],
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton(
@@ -80,9 +100,7 @@ class _MyHomePageState extends State<MyHomePage> {
           var result = await PdfMerger.mergeMultiplePDF(
               paths: filesPath, outputDirPath: outputDirPath);
 
-          print(result.status);
-          print(result.message);
-          print(result.response);
+          print(result.toMap);
         },
       ),
     );

@@ -2,7 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:pdf_merger/pdf_merge_response.dart';
+import 'package:pdf_merger/pdf_merge_args.dart';
+import 'package:pdf_merger/pdf_split_args.dart';
 
 class PdfMerger {
   static const MethodChannel _channel = const MethodChannel('pdf_merger');
@@ -12,9 +13,10 @@ class PdfMerger {
     return version;
   }
 
-  static Future<PdfMergeResponse> mergeMultiplePDF(
+  // PDF Merger
+  static Future<PdfMergeResult> mergeMultiplePDF(
       {@required List<String> paths, @required String outputDirPath}) async {
-    final pdfMergeResponse = PdfMergeResponse();
+    final pdfMergeResult = PdfMergeResult();
 
     final Map<String, dynamic> params = <String, dynamic>{
       'paths': paths,
@@ -22,8 +24,8 @@ class PdfMerger {
     };
 
     if (paths.length == 0 || paths.length < 2) {
-      pdfMergeResponse.status = false;
-      pdfMergeResponse.message = 'Select minimum 2 Pdf for merge';
+      pdfMergeResult.status = false;
+      pdfMergeResult.message = 'Select minimum 2 Pdf for merge';
     } else {
       try {
         bool isPDF = true;
@@ -38,25 +40,32 @@ class PdfMerger {
           final String response =
               await _channel.invokeMethod('mergeMultiplePDF', params);
           if (response == 'error') {
-            pdfMergeResponse.status = false;
-            pdfMergeResponse.message = 'Error in processing. Try again';
+            pdfMergeResult.status = false;
+            pdfMergeResult.message = 'Error in processing. Try again';
           } else {
-            pdfMergeResponse.status = true;
-            pdfMergeResponse.message = 'Pdf merge successfully';
-            pdfMergeResponse.response = response;
+            pdfMergeResult.status = true;
+            pdfMergeResult.message = 'Pdf merge successfully';
+            pdfMergeResult.result = response;
           }
         } else {
-          pdfMergeResponse.status = false;
-          pdfMergeResponse.message = 'Select pdf files';
+          pdfMergeResult.status = false;
+          pdfMergeResult.message = 'Select pdf files';
         }
       } on Exception catch (exception) {
-        pdfMergeResponse.status = false;
-        pdfMergeResponse.message = exception.toString();
+        pdfMergeResult.status = false;
+        pdfMergeResult.message = exception.toString();
       } catch (e) {
-        pdfMergeResponse.status = false;
-        pdfMergeResponse.message = e.toString();
+        pdfMergeResult.status = false;
+        pdfMergeResult.message = e.toString();
       }
     }
-    return pdfMergeResponse;
+    return pdfMergeResult;
+  }
+
+  // PDF Split
+  static Future<PdfSplitResult> splitPDF(PdfSplitArgs args) async {
+    Map<dynamic, dynamic> result =
+        await _channel.invokeMethod('splitPDF', args.toMap);
+    return PdfSplitResult(result);
   }
 }
